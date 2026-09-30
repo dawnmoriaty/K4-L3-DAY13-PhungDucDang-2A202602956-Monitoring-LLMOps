@@ -4,13 +4,13 @@
 
 ## 1. Thông tin học viên
 
-- **Họ và tên:**
-- **MSSV:**
+- **Họ và tên:** Phùng Đức Đăng
+- **MSSV:** 2A202602956
 - **Lớp:** K4-L3B
-- **Repository URL:**
-- **Commit SHA cuối:**
-- **Challenge ID:**
-- **Tên project Langfuse cá nhân:** `day13-k4-l3b-<MSSV>`
+- **Repository URL:** https://github.com/dawnmoriaty/K4-L3-DAY13-PhungDucDang-2A202602956-Monitoring-LLMOps
+- **Commit SHA cuối:** (Cập nhật sau commit cuối cùng)
+- **Challenge ID:** (Cập nhật khi nhận challenge ở CP3)
+- **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602956`
 
 ## 2. Evidence index
 
@@ -37,13 +37,13 @@
 
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
-| `validate_logs.py` | | | |
-| `validate_dashboard.py` | | | |
-| `pytest` | | | |
-| Số traces hợp lệ | | | |
-| Số PII leak | | | |
-| Latency P95 / TTFT P95 | | | |
-| Retrieval success rate | | | |
+| `validate_logs.py` | 30/100 | | Starter code chưa gắn correlation_id và enrichment context |
+| `validate_dashboard.py` | 6/6 panel hợp lệ | | Hợp lệ 6/6 panels theo specification contract |
+| `pytest` | 22/22 passed | | 22/22 unit tests baseline pass |
+| Số traces hợp lệ | 10 traces | | 10 traces được gửi lên project Langfuse cá nhân |
+| Số PII leak | 0 | | Không phát hiện rò rỉ PII nguyên văn ở log mẫu |
+| Latency P95 / TTFT P95 | 586.5 ms / 50.0 ms | | Đo từ 10 request baseline mẫu |
+| Retrieval success rate | 100% | | 10/10 retrieval tool call thành công |
 
 ## 4. Logging và PII
 
