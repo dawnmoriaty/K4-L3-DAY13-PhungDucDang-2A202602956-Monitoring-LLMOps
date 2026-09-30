@@ -8,7 +8,7 @@
 - **MSSV:** 2A202602956
 - **Lớp:** K4-L3B
 - **Repository URL:** https://github.com/dawnmoriaty/K4-L3-DAY13-PhungDucDang-2A202602956-Monitoring-LLMOps
-- **Commit SHA cuối:** `ee8a7c63ec171fc2b735710abbf7ffe1627399ed`
+- **Commit SHA cuối:** `7dcbb930876771f62ce587c071e996765009364e`
 - **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602956`
 
