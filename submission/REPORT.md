@@ -54,9 +54,11 @@
 
 ## 5. Tracing và prompt versioning
 
-- **Cách xác nhận traces do chính tôi tạo trong project cá nhân:**
-- **Cấu trúc root/retrieval/generation observations:**
-- **Cách nối trace với log:**
+- **Cách xác nhận traces do chính tôi tạo trong project cá nhân:** Traces được gửi trực tiếp tới project Langfuse cá nhân `day13-k4-l3b-2A202602956` thông qua API key cấu hình trong `.env`. Mỗi trace mang `user_id` đã được băm (`user_id_hash`), `session_id`, `environment: dev`, tags `["lab", feature, "claude-sonnet-4-5"]`, và `trace_name="day13-agent-request"`.
+- **Cấu trúc root/retrieval/generation observations:** Cây trace gồm: Root trace `day13-agent-request` $\rightarrow$ Observation gốc `lab-agent-run` (loại `agent`) $\rightarrow$ 2 observation con:
+  1. `retrieval` (loại `retriever`): gắn `@observe(name="retrieval", as_type="retriever", capture_input=False, capture_output=False)` trên hàm `retrieve()`, theo dõi bước truy xuất văn bản context.
+  2. `generation` (loại `generation`): gắn `@observe(name="generation", as_type="generation", capture_input=False, capture_output=False)` trên hàm `FakeLLM.generate()`, cập nhật `model`, `usage_details` (input/output/total tokens), `cost_details`, và liên kết tự động tới prompt version thông qua `with propagate_attributes(prompt=prompt.managed_prompt):`.
+- **Cách nối trace với log:** Thông qua `correlation_id` định dạng `req-<8-hex>` do middleware tạo/nhận. Mã này được ghi vào mọi sự kiện structured log trong `data/logs.jsonl` và đồng thời được truyền vào metadata của trace (`metadata.correlation_id`), cho phép dùng 1 correlation ID để tra cứu chính xác từ một dòng log sang trace tương ứng trên Langfuse và ngược lại.
 - **Prompt name:**
 - **Version/label baseline:**
 - **Version/label candidate:**
