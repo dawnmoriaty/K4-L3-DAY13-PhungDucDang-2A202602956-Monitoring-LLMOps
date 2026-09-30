@@ -59,11 +59,15 @@
   1. `retrieval` (loại `retriever`): gắn `@observe(name="retrieval", as_type="retriever", capture_input=False, capture_output=False)` trên hàm `retrieve()`, theo dõi bước truy xuất văn bản context.
   2. `generation` (loại `generation`): gắn `@observe(name="generation", as_type="generation", capture_input=False, capture_output=False)` trên hàm `FakeLLM.generate()`, cập nhật `model`, `usage_details` (input/output/total tokens), `cost_details`, và liên kết tự động tới prompt version thông qua `with propagate_attributes(prompt=prompt.managed_prompt):`.
 - **Cách nối trace với log:** Thông qua `correlation_id` định dạng `req-<8-hex>` do middleware tạo/nhận. Mã này được ghi vào mọi sự kiện structured log trong `data/logs.jsonl` và đồng thời được truyền vào metadata của trace (`metadata.correlation_id`), cho phép dùng 1 correlation ID để tra cứu chính xác từ một dòng log sang trace tương ứng trên Langfuse và ngược lại.
-- **Prompt name:**
-- **Version/label baseline:**
-- **Version/label candidate:**
+- **Prompt name:** `day13-chat` (Text prompt gồm 3 biến: `{{feature}}`, `{{docs}}`, `{{message}}`)
+- **Version/label baseline:** Version 1 (labels: `baseline`, `production`)
+- **Version/label candidate:** Version 2 (labels: `candidate`, `latest` - bổ sung chỉ dẫn trả lời ngắn gọn trong 1-2 câu)
 - **Trace ID của mỗi version:**
+  - Version 1 (baseline): Correlation ID `req-4c3a12c4` (xem trace `day13-agent-request` trên Langfuse tương ứng với request này, metadata hiển thị `prompt_version="1"`, `prompt_label="baseline"`)
+  - Version 2 (candidate): Correlation ID `req-c631ffd2` (xem trace `day13-agent-request` trên Langfuse tương ứng với request này, metadata hiển thị `prompt_version="2"`, `prompt_label="candidate"`)
 - **Cách promote và rollback `production`:**
+  - **Promote:** Mở Langfuse UI $\rightarrow$ **Prompts** $\rightarrow$ `day13-chat` $\rightarrow$ chọn Version 2 $\rightarrow$ thêm label `production` (khi đó label `production` tự động được dời từ v1 sang v2). Không cần sửa bất kỳ dòng code nào, hệ thống tự động tải v2 cho môi trường production.
+  - **Rollback:** Chọn Version 1 $\rightarrow$ thêm label `production` về lại Version 1. Label `production` lập tức trỏ về v1, khôi phục trạng thái an toàn ngay tức thì. Có thể kiểm chứng bằng SDK qua `client.update_prompt(name="day13-chat", version=1, new_labels=["baseline", "production"])`.
 
 ## 6. Dashboard, SLO và alerts
 

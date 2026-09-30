@@ -3,7 +3,10 @@ from __future__ import annotations
 import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
+
+load_dotenv(override=True)
 from fastapi.responses import JSONResponse
 from structlog.contextvars import bind_contextvars
 
