@@ -1,0 +1,47 @@
+[
+  {
+    "service": "api",
+    "payload": {
+      "message_preview": "What is your refund policy? My email is [REDACTED_EMAIL]"
+    },
+    "event": "request_received",
+    "session_id": "s01",
+    "model": "claude-sonnet-4-5",
+    "env": "dev",
+    "correlation_id": "req-0ed3fbce",
+    "feature": "qa",
+    "user_id_hash": "2055254ee30a",
+    "level": "info",
+    "ts": "2026-09-30T02:55:42.088795Z"
+  },
+  {
+    "service": "api",
+    "payload": {
+      "message_preview": "Here is my phone [REDACTED_PHONE_VN], what should be logged?"
+    },
+    "event": "request_received",
+    "session_id": "s05",
+    "model": "claude-sonnet-4-5",
+    "env": "dev",
+    "correlation_id": "req-41b2e11e",
+    "feature": "qa",
+    "user_id_hash": "64f6ec689229",
+    "level": "info",
+    "ts": "2026-09-30T02:55:44.318391Z"
+  },
+  {
+    "service": "api",
+    "payload": {
+      "message_preview": "What is the policy for PII and credit card [REDACTED_CREDIT_CARD]?"
+    },
+    "event": "request_received",
+    "session_id": "s09",
+    "model": "claude-sonnet-4-5",
+    "env": "dev",
+    "correlation_id": "req-a7f73137",
+    "feature": "qa",
+    "user_id_hash": "4d14d5d4f719",
+    "level": "info",
+    "ts": "2026-09-30T02:55:45.710428Z"
+  }
+]

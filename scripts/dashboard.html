@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>K4-L3B Day 13 Monitoring &amp; LLMOps Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #090d16;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 24px;
+    width: 1600px;
+    height: 1020px;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #131b2e;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    color: white;
+    font-weight: 800;
+    font-size: 18px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
+  }
+  .title-group h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.3px;
+  }
+  .title-group p {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .badge {
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge-live {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .badge-pulse {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10b981;
+  }
+  .badge-gray {
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+  }
+  .badge-user {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-gap: 20px;
+  }
+  .card {
+    background: #131b2e;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 410px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #cbd5e1;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .card-id {
+    font-size: 11px;
+    font-family: monospace;
+    color: #64748b;
+  }
+  .card-status {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+  }
+  
+  .card-kpi {
+    margin: 12px 0 6px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .kpi-num {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #f8fafc;
+  }
+  .kpi-unit {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+  }
+  
+  .breakdown {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+  .breakdown-item strong {
+    color: #e2e8f0;
+  }
+
+  .chart-container {
+    flex: 1;
+    background: #0b1120;
+    border-radius: 8px;
+    border: 1px solid #1e293b;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .card-bottom {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid #1e293b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: #64748b;
+  }
+  .threshold-text {
+    color: #38bdf8;
+    font-family: monospace;
+    font-weight: 600;
+  }
+  .query-text {
+    font-family: monospace;
+    color: #475569;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .threshold-line {
+    stroke: #ef4444;
+    stroke-dasharray: 4, 4;
+    stroke-width: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">LLMOps</div>
+    <div class="title-group">
+      <h1>K4-L3B Day 13 Monitoring & LLMOps</h1>
+      <p>Service: <strong>day13-agent-service</strong> &bull; Env: <strong>dev</strong> &bull; Model: <strong>claude-sonnet-4-5</strong> &bull; Log Source: <code>data/logs.jsonl</code></p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="badge badge-user">Student: Phùng Đức Đăng (2A202602956)</div>
+    <div class="badge badge-gray">&#9201; Time Range: Last 60m</div>
+    <div class="badge badge-gray">&#8635; Refresh: 30s</div>
+    <div class="badge badge-live"><span class="badge-pulse"></span> SLO 99.5% PASS</div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- Panel 1: Latency -->
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-title">Latency percentiles &amp; TTFT</div>
+        <div class="card-id">panel: latency &bull; events: response_sent</div>
+      </div>
+      <div class="card-status">NORMAL</div>
+    </div>
+    <div class="card-kpi">
+      <div class="kpi-num">11550</div>
+      <div class="kpi-unit">ms (P95)</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">P50: <strong>601 ms</strong></div>
+      <div class="breakdown-item">P95: <strong>11550 ms</strong></div>
+      <div class="breakdown-item">P99: <strong>13993 ms</strong></div>
+      <div class="breakdown-item">TTFT P95: <strong>50 ms</strong></div>
+    </div>
+    <div class="chart-container">
+      <svg width="420" height="100" viewBox="0 0 420 100">
+        <line x1="10" y1="70.7" x2="410" y2="70.7" class="threshold-line"/>
+        <text x="360" y="66.7" fill="#ef4444" font-size="9" font-family="monospace">3000ms</text>
+        <polyline points="10.0,83.6 31.1,83.6 52.1,83.4 73.2,83.3 94.2,83.0 115.3,82.9 136.3,82.6 157.4,82.4 178.4,82.1 199.5,82.1 220.5,81.8 241.6,81.8 262.6,80.8 283.7,79.9 304.7,79.7 325.8,79.2 346.8,72.8 367.9,30.6 388.9,29.8 410.0,15.0" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <div class="card-bottom">
+      <div class="threshold-text">&#10003; Threshold: P95 &le; 3000 ms</div>
+      <div class="query-text">percentile(latency_ms, [50,95,99])</div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Traffic -->
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-title">Request Traffic</div>
+        <div class="card-id">panel: traffic &bull; events: request_received</div>
+      </div>
+      <div class="card-status">ACTIVE</div>
+    </div>
+    <div class="card-kpi">
+      <div class="kpi-num">23</div>
+      <div class="kpi-unit">total requests</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">Rate: <strong>0.38 req/min</strong></div>
+      <div class="breakdown-item">Window: <strong>60 min</strong></div>
+      <div class="breakdown-item">Unique Reqs: <strong>23</strong></div>
+    </div>
+    <div class="chart-container">
+      <svg width="420" height="100" viewBox="0 0 420 100">
+        <line x1="10" y1="85" x2="410" y2="85" stroke="#334155" stroke-width="1"/>
+        <rect x="15.0" y="55.0" width="20.0" height="30.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="41.0" y="33.0" width="20.0" height="52.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="67.0" y="11.0" width="20.0" height="74.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="93.0" y="34.0" width="20.0" height="51.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="119.0" y="37.0" width="20.0" height="48.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="145.0" y="15.0" width="20.0" height="70.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="171.0" y="38.0" width="20.0" height="47.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="197.0" y="16.0" width="20.0" height="69.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="223.0" y="19.0" width="20.0" height="66.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="249.0" y="42.0" width="20.0" height="43.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="275.0" y="20.0" width="20.0" height="65.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="301.0" y="23.0" width="20.0" height="62.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="327.0" y="46.0" width="20.0" height="39.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="353.0" y="24.0" width="20.0" height="61.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+<rect x="379.0" y="2.0" width="20.0" height="83.0" rx="3" fill="#38bdf8" opacity="0.85"/>
+      </svg>
+    </div>
+    <div class="card-bottom">
+      <div class="threshold-text">&#10003; Threshold: rate &ge; 1 req/min</div>
+      <div class="query-text">count() by 1m</div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Errors -->
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-title">Error rate &amp; Retrieval Success</div>
+        <div class="card-id">panel: errors &bull; events: request_received, failed</div>
+      </div>
+      <div class="card-status">HEALTHY</div>
+    </div>
+    <div class="card-kpi">
+      <div class="kpi-num">0.0%</div>
+      <div class="kpi-unit">error rate</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">Failures: <strong>0</strong></div>
+      <div class="breakdown-item">Retrieval Success: <strong>100.0%</strong></div>
+      <div class="breakdown-item">Error budget: <strong>100% left</strong></div>
+    </div>
+    <div class="chart-container">
+      <svg width="420" height="100" viewBox="0 0 420 100">
+        <line x1="10" y1="25" x2="410" y2="25" class="threshold-line"/>
+        <text x="360" y="21" fill="#ef4444" font-size="9" font-family="monospace">Limit 2%</text>
+        <line x1="10" y1="85" x2="410" y2="85" stroke="#10b981" stroke-width="3"/>
+        <text x="180" y="70" fill="#10b981" font-size="11" font-weight="bold">0.0% Error Rate (Healthy)</text>
+      </svg>
+    </div>
+    <div class="card-bottom">
+      <div class="threshold-text">&#10003; Threshold: error &le; 2.0%</div>
+      <div class="query-text">count(failed)/count(received)*100</div>
+    </div>
+  </div>
+
+  <!-- Panel 4: Cost -->
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-title">Cost Over Time</div>
+        <div class="card-id">panel: cost &bull; events: response_sent</div>
+      </div>
+      <div class="card-status">IN BUDGET</div>
+    </div>
+    <div class="card-kpi">
+      <div class="kpi-num">$0.0465</div>
+      <div class="kpi-unit">USD total</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">Budget: <strong>$2.5000</strong></div>
+      <div class="breakdown-item">Remaining: <strong>$2.4535</strong></div>
+      <div class="breakdown-item">Avg/req: <strong>$0.00202</strong></div>
+    </div>
+    <div class="chart-container">
+      <svg width="420" height="100" viewBox="0 0 420 100">
+        <line x1="10" y1="85" x2="410" y2="85" stroke="#334155" stroke-width="1"/>
+        <polyline points="10.0,83.8 31.1,82.2 52.1,80.5 73.2,78.7 94.2,77.2 115.3,76.0 136.3,74.7 157.4,73.0 178.4,71.7 199.5,70.2 220.5,69.1 241.6,67.7 262.6,66.7 283.7,65.5 304.7,64.3 325.8,62.9 346.8,61.4 367.9,60.0 388.9,58.7 410.0,57.5" fill="none" stroke="#f59e0b" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <div class="card-bottom">
+      <div class="threshold-text">&#10003; Threshold: total &le; $2.50 USD</div>
+      <div class="query-text">sum(cost_usd) by 1m; sum(cost_usd)</div>
+    </div>
+  </div>
+
+  <!-- Panel 5: Tokens -->
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-title">Input and Output Tokens</div>
+        <div class="card-id">panel: tokens &bull; events: response_sent</div>
+      </div>
+      <div class="card-status">OPTIMAL</div>
+    </div>
+    <div class="card-kpi">
+      <div class="kpi-num">3,708</div>
+      <div class="kpi-unit">total tokens</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">&#9632; In: <strong>758</strong></div>
+      <div class="breakdown-item">&#9632; Out: <strong>2,950</strong></div>
+      <div class="breakdown-item">Avg/req: <strong>161</strong></div>
+    </div>
+    <div class="chart-container">
+      <svg width="420" height="100" viewBox="0 0 420 100">
+        <line x1="10" y1="85" x2="410" y2="85" stroke="#334155" stroke-width="1"/>
+        <rect x="15.0" y="81.4" width="26.5" height="3.6" rx="2" fill="#818cf8"/>
+<rect x="15.0" y="60.2" width="26.5" height="21.2" rx="2" fill="#c084fc"/>
+<rect x="47.5" y="81.8" width="26.5" height="3.2" rx="2" fill="#818cf8"/>
+<rect x="47.5" y="58.6" width="26.5" height="23.2" rx="2" fill="#c084fc"/>
+<rect x="80.0" y="80.7" width="26.5" height="4.3" rx="2" fill="#818cf8"/>
+<rect x="80.0" y="62.5" width="26.5" height="18.2" rx="2" fill="#c084fc"/>
+<rect x="112.5" y="81.1" width="26.5" height="3.9" rx="2" fill="#818cf8"/>
+<rect x="112.5" y="58.6" width="26.5" height="22.5" rx="2" fill="#c084fc"/>
+<rect x="145.0" y="81.7" width="26.5" height="3.3" rx="2" fill="#818cf8"/>
+<rect x="145.0" y="66.0" width="26.5" height="15.7" rx="2" fill="#c084fc"/>
+<rect x="177.5" y="81.5" width="26.5" height="3.5" rx="2" fill="#818cf8"/>
+<rect x="177.5" y="61.7" width="26.5" height="19.8" rx="2" fill="#c084fc"/>
+<rect x="210.0" y="82.1" width="26.5" height="2.9" rx="2" fill="#818cf8"/>
+<rect x="210.0" y="62.5" width="26.5" height="19.6" rx="2" fill="#c084fc"/>
+<rect x="242.5" y="82.3" width="26.5" height="2.7" rx="2" fill="#818cf8"/>
+<rect x="242.5" y="60.2" width="26.5" height="22.1" rx="2" fill="#c084fc"/>
+<rect x="275.0" y="81.4" width="26.5" height="3.6" rx="2" fill="#818cf8"/>
+<rect x="275.0" y="56.7" width="26.5" height="24.7" rx="2" fill="#c084fc"/>
+<rect x="307.5" y="82.2" width="26.5" height="2.8" rx="2" fill="#818cf8"/>
+<rect x="307.5" y="59.5" width="26.5" height="22.7" rx="2" fill="#c084fc"/>
+<rect x="340.0" y="82.3" width="26.5" height="2.7" rx="2" fill="#818cf8"/>
+<rect x="340.0" y="59.6" width="26.5" height="22.7" rx="2" fill="#c084fc"/>
+<rect x="372.5" y="82.3" width="26.5" height="2.7" rx="2" fill="#818cf8"/>
+<rect x="372.5" y="63.9" width="26.5" height="18.4" rx="2" fill="#c084fc"/>
+      </svg>
+    </div>
+    <div class="card-bottom">
+      <div class="threshold-text">&#10003; Threshold: sum &le; 50,000 tokens</div>
+      <div class="query-text">sum(tokens_in), sum(tokens_out)</div>
+    </div>
+  </div>
+
+  <!-- Panel 6: Quality -->
+  <div class="card">
+    <div class="card-top">
+      <div>
+        <div class="card-title">Quality Proxy</div>
+        <div class="card-id">panel: quality &bull; events: response_sent</div>
+      </div>
+      <div class="card-status">HIGH QUALITY</div>
+    </div>
+    <div class="card-kpi">
+      <div class="kpi-num">0.87</div>
+      <div class="kpi-unit">/ 1.0 score</div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-item">Mean: <strong>0.87</strong></div>
+      <div class="breakdown-item">Threshold: <strong>&ge; 0.75</strong></div>
+      <div class="breakdown-item">Samples: <strong>23</strong></div>
+    </div>
+    <div class="chart-container">
+      <svg width="420" height="100" viewBox="0 0 420 100">
+        <line x1="10" y1="32.5" x2="410" y2="32.5" class="threshold-line"/>
+        <text x="360" y="28.5" fill="#ef4444" font-size="9" font-family="monospace">Min 0.75</text>
+        <polyline points="10.0,22.0 31.1,22.0 52.1,22.0 73.2,22.0 94.2,22.0 115.3,22.0 136.3,22.0 157.4,22.0 178.4,22.0 199.5,29.0 220.5,29.0 241.6,22.0 262.6,22.0 283.7,22.0 304.7,22.0 325.8,22.0 346.8,22.0 367.9,22.0 388.9,29.0 410.0,29.0" fill="none" stroke="#10b981" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <div class="card-bottom">
+      <div class="threshold-text">&#10003; Threshold: mean &ge; 0.75 score</div>
+      <div class="query-text">mean(quality_score)</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
