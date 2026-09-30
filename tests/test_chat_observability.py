@@ -40,3 +40,43 @@ def test_chat_response_log_exposes_quality_for_dashboard(
     assert response_event["ttft_ms"] == response.json()["ttft_ms"]
     assert response_event["tool_name"] == "retrieval"
     assert response_event["tool_success"] is True
+
+
+def test_correlation_id_and_enrichment_propagation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    log_path = tmp_path / "logs.jsonl"
+    monkeypatch.setattr(logging_config, "LOG_PATH", log_path)
+
+    async def send_request() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            return await client.post(
+                "/chat",
+                headers={"x-request-id": "req-abcdef12"},
+                json={
+                    "user_id": "student-01",
+                    "session_id": "session-01",
+                    "feature": "qa",
+                    "message": "Check CCCD 001201012345 and phone 0901234567",
+                },
+            )
+
+    response = asyncio.run(send_request())
+    assert response.status_code == 200
+    assert response.headers["x-request-id"] == "req-abcdef12"
+    assert "x-response-time-ms" in response.headers
+
+    events = [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines()]
+    req_event = next(e for e in events if e["event"] == "request_received")
+    assert req_event["correlation_id"] == "req-abcdef12"
+    assert req_event["session_id"] == "session-01"
+    assert req_event["feature"] == "qa"
+    assert req_event["model"] == "claude-sonnet-4-5"
+    assert "001201012345" not in req_event["payload"]["message_preview"]
+    assert "0901234567" not in req_event["payload"]["message_preview"]
+    assert "REDACTED_CCCD" in req_event["payload"]["message_preview"]
+    assert "REDACTED_PHONE_VN" in req_event["payload"]["message_preview"]
+

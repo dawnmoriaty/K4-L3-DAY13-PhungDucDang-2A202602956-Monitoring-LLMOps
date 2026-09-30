@@ -47,10 +47,10 @@
 
 ## 4. Logging và PII
 
-- **Cách tạo/nhận và truyền correlation ID:**
-- **Các metadata được ghi vào structured log:**
-- **Cách bảo đảm PII được scrub trước khi ghi:**
-- **Cách kiểm chứng kết quả:**
+- **Cách tạo/nhận và truyền correlation ID:** Trong `app/middleware.py`, `CorrelationIdMiddleware` gọi `clear_contextvars()` để dọn sạch context của request trước, sau đó trích xuất header `x-request-id` từ client gửi lên; nếu không có header này thì tự sinh ID định dạng `req-<8-hex>` bằng `f"req-{uuid.uuid4().hex[:8]}"`. Correlation ID sau đó được bind vào structlog qua `bind_contextvars(correlation_id=correlation_id)` và gán vào `request.state.correlation_id`. Khi kết thúc request, middleware trả lại `x-request-id` và `x-response-time-ms` trong response headers.
+- **Các metadata được ghi vào structured log:** Gồm các trường định danh và ngữ cảnh request: `ts` (ISO timestamp UTC), `level` (info/error), `service` ("api"), `event` (`request_received`, `response_sent`, `request_failed`), `correlation_id`, `user_id_hash` (băm sha256 12 ký tự hex), `session_id`, `feature` (`qa`/`summary`), `model` (`claude-sonnet-4-5`), `env` (`dev`), cùng các metrics vận hành (`latency_ms`, `ttft_ms`, `tokens_in`, `tokens_out`, `cost_usd`, `quality_score`, `tool_name`, `tool_success`) và sanitized message/answer preview.
+- **Cách bảo đảm PII được scrub trước khi ghi:** Xây dựng danh sách regex pattern trong `app/pii.py` nhận diện email, điện thoại VN các định dạng, CCCD 12 số, thẻ tín dụng 16 số, hộ chiếu, và địa chỉ Việt Nam (từ khóa số nhà, đường/phố, ngõ/ngách, phường/xã, quận/huyện, TP/tỉnh) hỗ trợ cả có dấu, không dấu, chữ thường, chữ HOA, viết tắt (p., q., tp., đ/c), và tiền tố địa chỉ (`địa chỉ:`, `nơi ở:`, `đ/c:`, `DC:`). Hàm `scrub_text` chạy với cờ `re.IGNORECASE` để chuyển mọi thông tin nhạy cảm thành `[REDACTED_<TYPE>]`. Trong `app/logging_config.py`, bộ xử lý `scrub_event` được đưa vào pipeline cấu hình của `structlog` ngay trước `JsonlFileProcessor` và `JSONRenderer`, bảo đảm toàn bộ nội dung trong `payload` và `event` đều được scrub sạch trước khi render JSON hoặc ghi xuống file `data/logs.jsonl`.
+- **Cách kiểm chứng kết quả:** Chạy `python scripts/load_test.py` để gửi batch 10 requests mẫu (có chứa email, SĐT, số thẻ tín dụng giả lập). Chạy `python scripts/validate_logs.py` đạt **100/100 điểm** (0 missing required fields, 0 missing enrichment fields, 10 unique correlation IDs, 0 PII leaks). Toàn bộ 29/29 tests trong `pytest` chạy pass, bao gồm các bài test PII chuyên biệt cho email (cả lowercase/UPPERCASE), số điện thoại, CCCD, thẻ tín dụng, hộ chiếu, và đầy đủ các biến thể địa chỉ Việt Nam (không dấu, viết hoa, viết tắt, tiền tố địa chỉ) cùng test kiểm tra header / log propagation.
 
 ## 5. Tracing và prompt versioning
 
