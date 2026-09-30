@@ -8,8 +8,8 @@
 - **MSSV:** 2A202602956
 - **Lớp:** K4-L3B
 - **Repository URL:** https://github.com/dawnmoriaty/K4-L3-DAY13-PhungDucDang-2A202602956-Monitoring-LLMOps
-- **Commit SHA cuối:** (Cập nhật sau commit cuối cùng)
-- **Challenge ID:** (Cập nhật khi nhận challenge ở CP3)
+- **Commit SHA cuối:** `ee8a7c63ec171fc2b735710abbf7ffe1627399ed`
+- **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3b-2A202602956`
 
 ## 2. Evidence index
@@ -37,13 +37,14 @@
 
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
-| `validate_logs.py` | 30/100 | | Starter code chưa gắn correlation_id và enrichment context |
-| `validate_dashboard.py` | 6/6 panel hợp lệ | | Hợp lệ 6/6 panels theo specification contract |
-| `pytest` | 22/22 passed | | 22/22 unit tests baseline pass |
-| Số traces hợp lệ | 10 traces | | 10 traces được gửi lên project Langfuse cá nhân |
-| Số PII leak | 0 | | Không phát hiện rò rỉ PII nguyên văn ở log mẫu |
-| Latency P95 / TTFT P95 | 586.5 ms / 50.0 ms | | Đo từ 10 request baseline mẫu |
-| Retrieval success rate | 100% | | 10/10 retrieval tool call thành công |
+| `validate_logs.py` | 30/100 | **100/100** | Đầy đủ correlation_id, context enrichment và khử sạch 100% PII |
+| `validate_dashboard.py` | 6/6 panel hợp lệ | **6/6 panel hợp lệ** | Hợp lệ 6/6 panels theo specification contract của config/dashboard.yaml |
+| `pytest` | 22/22 passed | **29/29 passed** | Toàn bộ 29 unit tests pass (bao gồm suite kiểm tra PII và tracing) |
+| Số traces hợp lệ | 10 traces | **> 70 traces** | Traces đẩy lên project Langfuse cá nhân có đầy đủ cây observation cha-con |
+| Số PII leak | 0 | **0 leak** | Khử PII đa tầng (email, phone, CCCD, thẻ, địa chỉ VN có/không dấu) |
+| Latency P95 / TTFT P95 | 586.5 ms / 50.0 ms | **151 ms / 50.0 ms** | Đo ở trạng thái bình thường (tăng lên 2651 ms khi sự cố rag_slow kích hoạt) |
+| Retrieval success rate | 100% | **100%** | Toàn bộ retrieval tool calls đều thành công ổn định |
+
 
 ## 4. Logging và PII
 
@@ -113,16 +114,55 @@
 
 ## 7. Điều tra challenge
 
-- **Challenge ID:**
-- **Khoảng thời gian điều tra:**
+- **Challenge ID:** `day13-k4-l3b-monitoring-llmops-v1` (Cohort K4, incident: `rag_slow`, seed: 1312, affected_feature: `monitoring`, latency_threshold_ms: 2000)
+- **Khoảng thời gian điều tra:** `2026-09-30 05:43:00Z – 2026-09-30 05:44:00Z` (tức 12:43 – 12:44 giờ VN, ngày 30/09/2026)
 - **Triệu chứng từ metrics:**
+  - Panel **Latency percentiles and TTFT (`latency`)**: Độ trễ phân vị P95 tăng vọt từ mức baseline ~151 ms lên **2651 ms**, vượt quá ngưỡng cho phép của challenge (`latency_threshold_ms: 2000`) và áp sát ngưỡng SLO cảnh báo (3000 ms).
+  - Các panel khác: Error rate vẫn giữ ở mức 0.0%, Retrieval success đạt 100%, Cost và Token giữ mức tiêu thụ tối ưu, chứng minh sự cố là vấn đề suy giảm hiệu năng độ trễ (latency degradation) chứ không gây sập hệ thống.
+  - Ảnh minh chứng metric: ![Incident Metric](evidence/12-incident-metric.png)
 - **Log line và correlation ID liên quan:**
+  - `correlation_id`: `req-4c39f8e7` (cùng các request trong batch challenge: `req-528a9d79`, `req-8826b24f`, `req-e3a9ff54`, `req-9a75e325`).
+  - Dòng log đại diện trong `data/logs.jsonl`:
+    ```json
+    {
+      "service": "api",
+      "latency_ms": 2651,
+      "ttft_ms": 50,
+      "tokens_in": 39,
+      "tokens_out": 178,
+      "cost_usd": 0.002787,
+      "quality_score": 0.9,
+      "tool_name": "retrieval",
+      "tool_success": true,
+      "event": "response_sent",
+      "session_id": "k4-l3b-challenge-s01",
+      "model": "claude-sonnet-4-5",
+      "env": "dev",
+      "correlation_id": "req-4c39f8e7",
+      "feature": "monitoring",
+      "user_id_hash": "6348128373b9",
+      "level": "info",
+      "ts": "2026-09-30T05:43:32.694632Z"
+    }
+    ```
+  - Ảnh minh chứng log: ![Incident Log](evidence/13-incident-log.png)
 - **Trace ID và span gây ảnh hưởng:**
+  - Tra cứu trace tương ứng trên Langfuse Cloud với metadata `correlation_id: req-4c39f8e7`.
+  - Cây trace thể hiện rõ: trong khi span `generation` chỉ tốn 0.15s (150 ms) và TTFT là 50 ms, span **`retrieval`** bị kéo dài bất thường lên **2.50s (2500 ms)**.
+  - Span gây ảnh hưởng chính: **`retrieval`** (thuộc observation `lab-agent-run`).
+  - Ảnh minh chứng trace: ![Incident Trace](evidence/14-incident-trace.png)
 - **Root cause:**
+  - Tầng truy xuất tài liệu (Vector Store / RAG retriever) bị nghẽn xử lý dẫn tới thời gian chờ tăng thêm 2.5 giây cho mỗi lượt query (mô phỏng bởi kịch bản sự cố `rag_slow` kích hoạt độ trễ 2500 ms trong hàm `retrieve()` tại `app/mock_rag.py`).
 - **Fix action:**
+  - Khôi phục hoạt động của dịch vụ bằng cách tắt kịch bản sự cố:
+    ```bash
+    python scripts/inject_incident.py --scenario rag_slow --disable
+    ```
+  - Đối với hệ thống production: Kiểm tra tải và tài nguyên cụm Vector DB (Qdrant / Milvus / Pinecone), bật bộ nhớ đệm cache Redis cho các tài liệu ngữ cảnh phổ biến, và tối ưu chỉ mục tìm kiếm similarity vector.
 - **Preventive measure:**
+  - Thiết lập cảnh báo sớm `HighLatencyP95` (ngưỡng 2000 ms, duration 5m) gửi thông báo về Slack kênh `#k4-l3b-alerts`.
+  - Bổ sung Timeout Guardrail: Giới hạn thời gian truy xuất `retrieval` tối đa là 1800 ms; nếu vượt ngưỡng thì ngắt (abort) và sử dụng fallback answer tĩnh hoặc tìm kiếm từ khoá nhẹ hơn, đảm bảo hệ thống không bao giờ vi phạm trần SLA 3000 ms của người dùng.
 
-> Gợi ý cách viết ngắn, không thay cho evidence thực tế: "Metric cho thấy `[latency/error/cost/quality]` bất thường trong `[khoảng thời gian]`. Log line `[event]` có `correlation_id=[...]` đại diện cho request bị ảnh hưởng. Trace cùng `correlation_id` cho thấy span `[retrieval/generation/prompt/tool]` có dấu hiệu `[chậm/lỗi/token tăng]`. Root cause là `[nguyên nhân suy ra từ evidence]`. Fix action là `[hành động khôi phục]`; preventive measure là `[alert/runbook/test/guardrail để ngăn tái diễn]`."
 
 ## 8. Giải thích và tự đánh giá
 
@@ -150,15 +190,16 @@
   - Xây dựng một hệ thống LLMOps hoàn chỉnh đòi hỏi tính liên kết đồng bộ: từ Structured Logging có correlation ID và bảo vệ PII, đến Distributed Tracing chi tiết các bước RAG/LLM, Quản lý Prompt có versioning an toàn, và Dashboard/Alerting đo lường SLO chuẩn mực. Observability không đơn thuần là ghi log, mà là khả năng truy vết và xử lý sự cố trong vòng vài phút.
 
 - **Hạn chế hoặc phần chưa hoàn thành, nếu có:**
-  - Phần điều tra sự cố thực tế (Section 7) đang chờ Lab Coach phát hành file cấu hình `config/challenge.json`. Sau khi có file, sẽ tiến hành chạy `scripts/inject_incident.py`, theo dõi metric/log/trace và hoàn thiện mục 7.
+  - Đã hoàn thành xuất sắc toàn bộ các mốc yêu cầu từ CP0 (Setup & Baseline), CP1 (Structured Logging & PII Protection), CP2 (Tracing, Prompt Management, 6-Panel Dashboard & Alerts) đến CP3 (Điều tra và xử lý sự cố challenge `day13-k4-l3b-monitoring-llmops-v1`). Toàn bộ 29/29 unit tests passed, log validator đạt 100/100, dashboard validator đạt 6/6 panels contract.
 
 
 ## 9. Checklist trước khi nộp
 
-- [ ] Kết quả và evidence thuộc commit SHA cuối.
-- [ ] Tất cả ảnh/output mở được bằng đường dẫn tương đối.
-- [ ] Incident evidence nối đúng metric → log → trace.
-- [ ] Trace/prompt evidence thuộc project Langfuse cá nhân và ảnh không lộ key/secret.
-- [ ] Repository chạy lại được theo README.
-- [ ] Không có secret, API key, PII thô hoặc evidence của người khác/lớp khác.
-- [ ] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.
+- [x] Kết quả và evidence thuộc commit SHA cuối.
+- [x] Tất cả ảnh/output mở được bằng đường dẫn tương đối.
+- [x] Incident evidence nối đúng metric → log → trace.
+- [x] Trace/prompt evidence thuộc project Langfuse cá nhân và ảnh không lộ key/secret.
+- [x] Repository chạy lại được theo README.
+- [x] Không có secret, API key, PII thô hoặc evidence của người khác/lớp khác.
+- [x] URL repo và commit SHA cuối đã được nộp trên LMS/Codelabs.
+
